@@ -1,4 +1,3 @@
-```markdown
 # Three-Tier AWS Web Application
 
 A fully functional three-tier web application deployed on AWS using Terraform. Built as a cloud engineering portfolio project demonstrating infrastructure as code, network design, security best practices, and AWS service integration.
@@ -7,18 +6,11 @@ A fully functional three-tier web application deployed on AWS using Terraform. B
 
 ## Architecture
 
-```
-Internet
-    ↓
-CloudFront (HTTPS) → S3 (private) — Frontend
-    ↓
-EC2 t3.micro (public subnet) — Backend API
-    ↓
-RDS PostgreSQL 15.7 (private subnet) — Database
-```
+Internet → CloudFront (HTTPS) → S3 (private) — Frontend
+
+Internet → IGW → EC2 t3.micro (public subnet) — Backend API → RDS PostgreSQL 15.7 (private subnet) — Database
 
 ![Architecture Diagram](docs/architecture.png)
-
 
 ---
 
@@ -99,4 +91,3 @@ Terraform will output the CloudFront URL, EC2 public IP, and RDS endpoint after 
 
 Cristian — IT Support Analyst transitioning into Cloud Engineering
 [GitHub](https://github.com/cristianxcueva)
-```
