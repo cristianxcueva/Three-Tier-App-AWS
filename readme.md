@@ -65,7 +65,7 @@ RDS PostgreSQL 15.7 (private subnet) — Database
 ### Steps
 
 ```bash
-git clone https://github.com/crizzydablack123/Three-Tier-App-AWS.git
+git clone https://github.com/cristiancueva/Three-Tier-App-AWS.git
 cd Three-Tier-App-AWS/terraform
 terraform init
 terraform apply
@@ -95,5 +95,5 @@ Terraform will output the CloudFront URL, EC2 public IP, and RDS endpoint after 
 ## Author
 
 Cristian — IT Support Analyst transitioning into Cloud Engineering
-[GitHub](https://github.com/crizzydablack123)
+[GitHub](https://github.com/cristiancueva)
 ```
