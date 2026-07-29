@@ -56,7 +56,7 @@
             responseDiv.style.display = 'block';
             responseDiv.innerText = 'Calling backend...';
             try {
-               const res = await fetch('http://${backend_ip}:8080');              
+               const res = await fetch('http://${backend_url}');              
                 const data = await res.json();
                 responseDiv.innerText = JSON.stringify(data, null, 2);
             } catch (err) {
