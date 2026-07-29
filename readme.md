@@ -1,4 +1,4 @@
-# Three-Tier AWS Web App
+# Three Tier AWS Web App
 
 A highly available, fault tolerant web application deployed on AWS across multiple availability zones. Built as a cloud engineering portfolio project to demonstrate real infrastructure-as-code skills on AWS.
 
