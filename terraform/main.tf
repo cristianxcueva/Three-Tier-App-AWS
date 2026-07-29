@@ -343,8 +343,10 @@ resource "aws_launch_template" "backend" {
     name = aws_iam_instance_profile.ec2_profile.name
   }
 
- vpc_security_group_ids = [aws_security_group.backend.id]
-
+network_interfaces {
+    security_groups = [aws_security_group.backend.id]
+    associate_public_ip_address = true
+  }
  # Same user_data as the original instance - installs Node.js and starts
   # the API on port 8080, runs automatically on every new instance launch
   user_data = base64encode(<<-EOF
