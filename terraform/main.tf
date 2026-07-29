@@ -242,8 +242,9 @@ resource "aws_db_instance" "main" {
 
   skip_final_snapshot = true
   backup_retention_period = 7
+  multi_az = true
   publicly_accessible = false
-
+  
   tags = {
     Name = "three-tier-db"
   }
