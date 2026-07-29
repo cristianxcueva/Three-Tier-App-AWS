@@ -97,6 +97,56 @@ resource "aws_security_group" "alb" {
   }
 }
 
+# ALB distributes traffic across EC2 instances in both public subnets
+# internet facing so it has a public DNS name users can reach
+
+resource "aws_lb" "main" {
+  name               = "three-tier-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+
+  tags = {
+    Name = "three-tier-alb"
+  }
+}
+
+# Target group is where ALB sends traffic - EC2 instances register here
+# health check on / confirms the Node.js server is actually responding
+
+resource "aws_lb_target_group" "main" {
+  name     = "three-tier-tg"
+  port     = 8080
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.main.id
+
+  health_check {
+    path                = "/"
+    protocol            = "HTTP"
+    port                = 8080
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    interval            = 30
+  }
+
+  tags = {
+    Name = "three-tier-tg"
+  }
+}
+
+# Listener on port 80 - receives incoming traffic and forwards to target group
+resource "aws_lb_listener" "main" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+}
+
 # Route Table for Public Subnets
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
