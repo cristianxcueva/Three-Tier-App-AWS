@@ -200,16 +200,18 @@ resource "aws_db_instance" "main" {
 }
 
 # Security Group - EC2 Backend
+ # Port 8080 locked to ALB only - direct internet access to EC2 removed
+  # once ALB sits in front, no reason for the world to reach EC2 directly
 resource "aws_security_group" "backend" {
   name        = "three-tier-backend-sg"
   description = "Allow SSH and HTTP traffic"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 22
-    to_port     = 22
+    from_port   = 8080
+    to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [aws_security_group.alb.id]
   }
 
   ingress {
