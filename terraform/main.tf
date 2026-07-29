@@ -330,34 +330,66 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-# EC2 Instance - Backend
-resource "aws_instance" "backend" {
-  ami                         = "ami-0521cb2d60cfbb1a6"
-  instance_type               = "t3.micro"
-  subnet_id                   = aws_subnet.public_1.id
-  vpc_security_group_ids      = [aws_security_group.backend.id]
-  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
-  associate_public_ip_address = true
-  key_name = "three-tier-key"
+# Launch template replaces the single aws_instance - ASG uses this as the
+# blueprint for every EC2 it creates, same config as the original instance
+resource "aws_launch_template" "backend" {
+  name_prefix   = "three-tier-backend-"
+  image_id      = "ami-0521cb2d60cfbb1a6"
+  instance_type = "t3.micro"
+  key_name      = "three-tier-key"
 
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y nodejs npm
-              mkdir -p /app
-              cat > /app/server.js << 'SCRIPT'
-              const http = require('http');
-              const server = http.createServer((req, res) => {
-                res.writeHead(200, {'Content-Type': 'application/json'});
-                res.end(JSON.stringify({ message: 'Backend is alive', status: 'ok' }));
-              });
-              server.listen(8080, () => console.log('Server running on port 8080'));
-              SCRIPT
-              node /app/server.js &
-              EOF
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_profile.name
+  }
 
-  tags = {
-    Name = "three-tier-backend"
+ vpc_security_group_ids = [aws_security_group.backend.id]
+
+ # Same user_data as the original instance - installs Node.js and starts
+  # the API on port 8080, runs automatically on every new instance launch
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    yum update -y
+    yum install -y nodejs npm
+    mkdir -p /app
+    cat > /app/server.js << 'SCRIPT'
+    const http = require('http');
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, {'Content-Type': 'application/json'});
+      res.end(JSON.stringify({ message: 'Backend is alive', status: 'ok' }));
+    });
+    server.listen(8080, () => console.log('Server running on port 8080'));
+    SCRIPT
+    node /app/server.js &
+  EOF
+  )
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "three-tier-backend"
+    }
+  }
+}
+
+# ASG manages EC2 instances across both public subnets - min 1 keeps something
+# always running, desired 2 proves multi-AZ HA, max 3 allows scaling headroom
+resource "aws_autoscaling_group" "backend" {
+  name                      = "three-tier-asg"
+  desired_capacity          = 2
+  min_size                  = 1
+  max_size                  = 3
+  vpc_zone_identifier       = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+  target_group_arns         = [aws_lb_target_group.main.arn]
+
+  launch_template {
+    id      = aws_launch_template.backend.id
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "three-tier-backend"
+    propagate_at_launch = true
   }
 }
 
@@ -459,9 +491,9 @@ resource "aws_s3_bucket_policy" "frontend" {
 }
 
 # Outputs
-output "ec2_public_ip" {
-  value       = aws_instance.backend.public_ip
-  description = "Public IP of the backend EC2 instance"
+output "alb_dns_name" {
+  value       = aws_lb.main.dns_name
+  description = "DNS name of the backend ALB"
 }
 
 output "cloudfront_url" {
@@ -479,11 +511,11 @@ resource "aws_s3_object" "index" {
   bucket       = aws_s3_bucket.frontend.id
   key          = "index.html"
   content      = templatefile("../frontend/index.html", {
-    backend_ip = aws_instance.backend.public_ip
+    backend_url = aws_lb.main.dns_name
   })
   content_type = "text/html"
   etag         = md5(templatefile("../frontend/index.html", {
-    backend_ip = aws_instance.backend.public_ip
+    backend_url = aws_lb.main.dns_name
   }))
 }
 
@@ -500,7 +532,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_cpu" {
   alarm_description   = "EC2 CPU utilization exceeded 80%"
 
   dimensions = {
-    InstanceId = aws_instance.backend.id
+    AutoscalingGroupName = aws_autoscaling_group.backend.name
   }
 
   tags = {
